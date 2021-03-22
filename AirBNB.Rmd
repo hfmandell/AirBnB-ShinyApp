@@ -1,0 +1,173 @@
+---
+title: "Airbnb Listings in NY"
+author: 'Hannah Mandell'
+output: 
+  flexdashboard::flex_dashboard:
+    source_code: embed
+    vertical_layout: scroll
+    theme: yeti
+    orientation: column
+
+---
+
+``` {js}
+// Inverse color of navigation bar.
+$('.navbar-inverse').removeClass('navbar-inverse').addClass('navbar-default');
+```
+
+```{r}
+#install.packages("flexdashboard")
+#install.packages("tidyverse")
+#install.packages("caret")
+#install.packages("highcharter")
+#install.packages("ggmap")
+#install.packages("leaflet")
+#install.packages("plotly")
+#install.packages("DT")
+#install.packages("shiny")
+```
+
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(caret)
+library(highcharter)
+library(ggmap)
+library(leaflet)
+library(plotly)
+library(DT)
+library(shiny)
+list.files(path = "../input")
+df <- read.csv(file = "AB_NYC_2019.csv")
+```
+
+
+```{r, include=FALSE}
+df$reviews_per_month[is.na(df$reviews_per_month)] <- 0
+df <- df %>% mutate(avg_price = price/minimum_nights)
+```
+
+Overview
+=======================================================================
+
+ Column {.tabset .tabset-fade data-width=700 .colored }
+-----------------------------------------------------------------------
+
+### Location
+```{r, fig.height=10}
+leaflet(df %>% select(longitude,neighbourhood_group,neighbourhood,latitude,price)) %>%
+  setView(lng = -73.95, lat = 40.73,zoom = 10) %>%
+   addTiles() %>% 
+  addMarkers(
+  clusterOptions = markerClusterOptions())
+```
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Number of stays
+```{r, fig.height=0.25}
+valueBox(nrow(df), icon = "fa-ship", color="rgb(100,100,100)")
+```
+
+### Average price per day
+```{r, fig.height=0.25}
+valueBox(round(mean(df$price, na.rm = T),0), icon = "fa-heart", color="black(200,100,100)")
+```
+
+
+### Avg Prices by Neighborhood
+```{r,fig.height=4}
+fig <- df %>% plot_ly(labels = ~neighbourhood_group, values = ~avg_price)
+fig <- fig %>% add_pie(hole = 0.6)
+fig <- fig %>% layout( showlegend = F,
+                      xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+                      yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+fig
+```
+
+
+### Violin Plot: AVG Price by Neighborhood
+```{r,fig.height=4}
+fig2 <- df %>%
+  plot_ly(
+    x = ~neighbourhood_group,
+    y = ~avg_price,
+    split = ~neighbourhood_group,
+    type = 'violin',
+    box = list(
+      visible = T
+    ),
+    meanline = list(
+      visible = T
+    )
+  ) 
+
+fig2 <- fig2 %>%
+  layout(
+    xaxis = list(
+      title = "Neighborhood"
+    ),
+    yaxis = list(
+      title = "AVG Price",
+      zeroline = F
+    )
+  )
+
+fig2
+```
+
+Room type
+=======================================================================
+
+ Column {data-width=700 .colored }
+-----------------------------------------------------------------------
+
+### Average price per day of common room
+```{r, fig.height=2.5}
+hchart(df$avg_price[df$avg_price < 500], color = "#AA4643", name = "Price per day") %>%
+  hc_title(text = "Average price of common room") %>%
+  hc_add_theme(hc_theme_ffx())
+```
+
+### Average price per day of high-class room
+```{r,fig.height=2.5}
+hchart(df$avg_price[df$avg_price < 500], color = "#3D96AE", name = "Price per day") %>%
+  hc_title(text = "Average price of high-class room") %>%
+  hc_add_theme(hc_theme_ffx())
+```
+
+Column {data-width=300}
+-----------------------------------------------------------------------
+
+### Number of common rooms
+```{r,fig.height=0.25}
+valueBox(nrow(df %>% 
+                filter(avg_price < 500)), icon = "fa-heart",color="#B71C1C")
+```
+
+
+### Average price per day of common rooms
+```{r, fig.height=0.25}
+valueBox(round(mean(df$avg_price[df$avg_price < 500]),0), icon = "fa-heart",color="#B71C1C")
+```
+
+### Number of high-class room
+```{r, fig.height=0.25}
+valueBox(nrow(df %>% 
+                filter(avg_price >= 500)), icon = "fa-heart",color="#006699")
+```
+
+### Average price per day of high-class rooms
+```{r, fig.height=0.25}
+valueBox(round(mean(df$avg_price[df$avg_price >= 500]),0), icon = "fa-heart",color="#006699")
+```
+
+### Availability
+```{r,fig.height=3}
+hchart(df$availability_365, color = "#336666", name = "Availability") %>%
+  hc_title(text = "Overall room availability") %>%
+  hc_add_theme(hc_theme_ffx())
+```
